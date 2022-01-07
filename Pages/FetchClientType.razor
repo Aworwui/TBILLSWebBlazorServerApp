@@ -1,0 +1,55 @@
+﻿@page "/clientTypelist"
+@using Microsoft.Extensions.Primitives
+@inject IClientTypeService clientTypeService
+
+<h2>
+    Client Type Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="ClientType" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code {
+    private CGrid<ClientType> _grid;
+    private Task _task;
+    private GridComponent<ClientType> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<ClientType>> columns = c =>
+        {
+            c.Add(o => o.ClientTypeNo).Titled("ID").SetPrimaryKey(true).SetReadOnlyOnCreate(true).SetReadOnlyOnUpdate(true);
+            c.Add(o => o.ClientTypeCode).Titled("Code");
+            c.Add(o => o.ClientType1).Titled("Description");
+            c.Add(o => o.ClientTypePrefix).Titled("Type Prefix");
+            c.Add(o => o.ParticipantId).Titled("Participant ID");
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        var client = new GridClient<ClientType>(q => clientTypeService.GetClientTypeGridRows(columns, q), query, false, "clientTypeGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable(true, false, false)
+            .WithMultipleFilters()
+            .SetExcelExport(true, false, "clientTypeListExport")
+            .ChangePageSize(true)
+            .Crud(true,clientTypeService);
+
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+}

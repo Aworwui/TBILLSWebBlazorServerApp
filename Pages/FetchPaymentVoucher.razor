@@ -1,0 +1,246 @@
+﻿@page "/listPaymentVoucherGrid"
+@page "/listPaymentVoucherGrid/{PvNo}/{Mode}"
+@using Microsoft.Extensions.Primitives
+@inject IClientAccountService caService
+@inject IPaymentVoucherService pvService
+@inject IPaymentVoucherDetailService pvdService
+
+<h2>
+    Payment Voucher Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="PaymentVoucher" @ref="_gridComponent" Grid="@_grid" Mode="_mode" Keys="_keys"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<PaymentVoucher> _grid;
+    private Task _task;
+    private GridComponent<PaymentVoucher> _gridComponent;
+    private object[] _keys;
+    private GridMode _mode;
+
+    [Parameter]
+    public string PvNo { get; set; }
+
+    [Parameter]
+    public string Mode { get; set; }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Func<object[], bool, bool, bool, bool, Task<IGrid>> subGrids = async (keys, create, read, update, delete) =>
+        {
+            var subGridQuery = new QueryDictionary<StringValues>();
+
+            Action<IGridColumnCollection<PaymentVoucherDetail>> subGridColumns = c => ColumnCollections.pvDetailColumnsCrud(c);
+
+            var subGridClient = new GridClient<PaymentVoucherDetail>(q => pvdService.GetPaymentVoucherDetailGridRows(subGridColumns, keys, q),
+                subGridQuery, false, "pvDetailGrid" + keys[0].ToString(), subGridColumns)
+                    .Sortable()
+                    .Filterable()
+                    .SetStriped(true)
+                    .Crud(create, read, update, delete, pvdService)
+                    .WithMultipleFilters()
+                    .WithGridItemsCount()
+                  
+                    .AddToOnAfterRender(OnAfterpvDetailRender)
+                    .SetEditAfterInsert(true);
+
+            await subGridClient.UpdateGrid();
+            return subGridClient.Grid;
+        };
+
+        var query = new QueryDictionary<StringValues>();
+
+        Action<IGridColumnCollection<PaymentVoucher>> columns = c => ColumnCollections.pvColumnsWithNestedCrud(c, c => caService.GetAllClinetAccounts(), subGrids);
+
+        var client = new GridClient<PaymentVoucher>(q => pvService.GetPaymentVoucherGridRows(columns, q),
+            query, false, "pvGrid", columns)
+            .Sortable()
+            .Filterable()
+            .SetStriped(true)
+            .Crud(true, pvService)
+            .WithMultipleFilters()
+            .WithGridItemsCount()
+            .SetEditAfterInsert(true);
+
+        _grid = client.Grid;
+
+        if (!string.IsNullOrWhiteSpace(PvNo))
+        {
+            int Pv_ID;
+            bool result = int.TryParse(PvNo, out Pv_ID);
+            if (result)
+            {
+                if (Mode.ToLower() == "create")
+                {
+                    _keys = new object[] { Pv_ID };
+                    _mode = GridMode.Create;
+                }
+                else if (Mode.ToLower() == "read")
+                {
+                    _keys = new object[] { Pv_ID };
+                    _mode = GridMode.Read;
+                }
+                else if (Mode.ToLower() == "update")
+                {
+                    _keys = new object[] { Pv_ID };
+                    _mode = GridMode.Update;
+                }
+                else if (Mode.ToLower() == "delete")
+                {
+                    _keys = new object[] {Pv_ID};
+                    _mode = GridMode.Delete;
+                }
+            }
+        }
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+    private async Task OnAfterpvDetailRender(GridComponent<PaymentVoucherDetail> gridComponent, bool firstRender)
+    {
+        if (firstRender)
+        {
+            gridComponent.BeforeInsert += BeforeInsertTSDetail;
+            gridComponent.BeforeUpdate += BeforeUpdateTSDetail;
+            gridComponent.BeforeDelete += BeforeDeleteTSDetail;
+
+            gridComponent.AfterInsert += AfterInsertTSDetail;
+            gridComponent.AfterUpdate += AfterUpdateTSDetail;
+            gridComponent.AfterDelete += AfterDeleteTSDetail;
+            gridComponent.AfterBack += AfterBack;
+
+            gridComponent.AfterCreateForm += AfterFormTSDetail;
+            gridComponent.AfterReadForm += AfterFormTSDetail;
+            gridComponent.AfterUpdateForm += AfterFormTSDetail;
+            gridComponent.AfterDeleteForm += AfterFormTSDetail;
+
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task<bool> BeforeInsertTSDetail(GridCreateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsDetailValidator = new pvDetailValidator();
+        var valid = await tsDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeInsert(GridCreateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsValidator = new pvDetailValidator();
+        var valid = await tsValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdate(GridUpdateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsValidator = new pvDetailValidator();
+        var valid = await tsValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDelete(GridDeleteComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsValidator = new pvDetailValidator();
+        var valid = await tsValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdateTSDetail(GridUpdateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsDetailValidator = new pvDetailValidator();
+        var valid = await tsDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDeleteTSDetail(GridDeleteComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        var tsDetailValidator = new pvDetailValidator();
+        var valid = await tsDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+
+    private async Task AfterInsertTSDetail(GridCreateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterUpdateTSDetail(GridUpdateComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterDeleteTSDetail(GridDeleteComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterBack(GridComponent<PaymentVoucherDetail> component, PaymentVoucherDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterFormTSDetail(GridComponent<PaymentVoucherDetail> gridComponent, PaymentVoucherDetail item)
+    {
+        _gridComponent.HideCrudButtons();
+        await Task.CompletedTask;
+    }
+
+}
+

@@ -1,0 +1,163 @@
+﻿<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">TBILLSWebBlazorServerApp</a>
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" @onclick="()=>expandSubMenu= !expandSubMenu">
+                <span class="oi oi-cart" aria-hidden="true"></span>Settings
+            </NavLink>
+            @if (expandSubMenu)
+            {
+        <ul class="nav flex-column">
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="clientCategorylist">
+                    <span class="oi oi-file" aria-hidden="true"></span> Client Category
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="clientTypelist">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Client Type
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="gridsample">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> CSD Client Type
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="listSecurities">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Securities
+                </NavLink>
+            </li>
+
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="listTaxation">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Taxation
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="listInstruction">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span>Instruction
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="listAssetType">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span>Asset Type
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="listTradingSessionCalendar">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span>Trading Calendar
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="clientlistGrid">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Clients Accounts
+                </NavLink>
+            </li>
+        </ul>
+            }
+        </li>
+        
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" @onclick="()=>expandTradingSubMenu= !expandTradingSubMenu">
+                <span class="oi oi-cart" aria-hidden="true"></span>Trading
+            </NavLink>
+            @if (expandTradingSubMenu)
+            {
+                <ul class="nav flex-column">
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="listTradingSessionGrid">
+                            <span class="oi oi-file" aria-hidden="true"></span> Trading Session
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/listAllotmentsGrid">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Allotment
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/listOrderGrid">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Orders
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" @onclick="()=>expandPaymentSubMenu= !expandPaymentSubMenu">
+                <span class="oi oi-cart" aria-hidden="true"></span>Payments
+            </NavLink>
+            @if (expandPaymentSubMenu)
+            {
+                <ul class="nav flex-column">
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="TradingSessionlist">
+                            <span class="oi oi-file" aria-hidden="true"></span> Reciepts
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="listPaymentVoucherGrid">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Payables
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="OrdersList">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Others
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" @onclick="()=>expandMaturitySubMenu= !expandMaturitySubMenu">
+                <span class="oi oi-cart" aria-hidden="true"></span>Reports
+            </NavLink>
+            @if (expandMaturitySubMenu)
+            {
+                <ul class="nav flex-column">
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="TradingSessionlist">
+                            <span class="oi oi-file" aria-hidden="true"></span> Maturity
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="Allotmentlist">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Statements
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="OrdersList">
+                            <span class="oi oi-bar-chart" aria-hidden="true"></span> Reciepts
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+        </li>
+    </ul>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool expandSubMenu; //add
+    private bool expandTradingSubMenu;
+    private bool expandMaturitySubMenu;
+    private bool expandPaymentSubMenu;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

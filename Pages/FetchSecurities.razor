@@ -1,0 +1,55 @@
+﻿@page "/listSecurities"
+@using Microsoft.Extensions.Primitives
+@inject ISecurityService securityService
+
+
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="Security" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<Security> _grid;
+    private Task _task;
+    private GridComponent<Security> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<Security>> columns = c =>
+        {
+            c.Add(o => o.SecurityNo).Titled("ID").SetPrimaryKey(true);
+            c.Add(o => o.SecurityCode).Titled("Code");
+            c.Add(o => o.SecurityDescription).Titled("Description");
+            c.Add(o => o.AssetTypeNo, true).SetSelectField(true, o => o.AssetType.AssetTypeNo + " - " + o.AssetType.AssetType1,
+           o => securityService.GetAllAssetType());
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        var client = new GridClient<Security>(q => securityService.GetSecurityGridRows(columns, q), query, false, "securityGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable(true, false, false)
+            .WithMultipleFilters()
+            .SetExcelExport(true, false, "SecurityList")
+            .ChangePageSize(true)
+            .Crud(true, securityService);
+
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+}

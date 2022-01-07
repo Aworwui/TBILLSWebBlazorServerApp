@@ -1,0 +1,56 @@
+﻿@page "/listAssetType"
+@using Microsoft.Extensions.Primitives
+@inject IAssetTypeService assetTypeService
+
+    <h2>
+        Asset Type Details
+    </h2>
+
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="AssetType" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<AssetType> _grid;
+    private Task _task;
+    private GridComponent<AssetType> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<AssetType>> columns = c =>
+        {
+            c.Add(o => o.AssetTypeNo).Titled("ID").SetPrimaryKey(true);
+            c.Add(o => o.AssetTypeCode).Titled("Code");
+            c.Add(o => o.AssetType1).Titled("Asset Type");
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        var client = new GridClient<AssetType>(q => assetTypeService.GetTaxationGridRows(columns, q), query, false, "assetTypeGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable(true, false, false)
+            .WithMultipleFilters()
+            .SetExcelExport(true, false, "AssetTypeList")
+            .ChangePageSize(true)
+            .Crud(true, assetTypeService);
+
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+}

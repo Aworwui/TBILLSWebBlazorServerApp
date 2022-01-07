@@ -1,0 +1,58 @@
+﻿@page "/listInstruction"
+@using Microsoft.Extensions.Primitives
+@inject IInstructionService instructionService
+
+
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="Instruction" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<Instruction> _grid;
+    private Task _task;
+    private GridComponent<Instruction> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<Instruction>> columns = c =>
+        {
+            c.Add(o => o.InstructionNo).Titled("ID").SetPrimaryKey(true);
+            c.Add(o => o.InstructionCode).Titled("Code");
+            c.Add(o => o.Instruction1).Titled("Instruction");
+            c.Add(o => o.Operator).Titled("Operator");
+            c.Add(o => o.Rediscount).Titled("Re-discount");
+            c.Add(o => o.RolloverAmount).Titled("Roll-over Amount");
+            c.Add(o => o.RolloverAs).Titled("Roll-over As");
+            c.Add(o => o.VariableAmount).Titled("Variable Amount");
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        var client = new GridClient<Instruction>(q => instructionService.GetInstructionGridRows(columns, q), query, false, "taxationGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable(true, false, false)
+            .WithMultipleFilters()
+            .SetExcelExport(true, false, "TaxationList")
+            .ChangePageSize(true)
+            .Crud(true, instructionService);
+
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+}

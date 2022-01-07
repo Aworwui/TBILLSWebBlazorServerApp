@@ -1,0 +1,56 @@
+﻿@page "/listTaxation"
+@using Microsoft.Extensions.Primitives
+@inject ITaxationService taxationService
+
+    <h2>
+        Taxation Details
+    </h2>
+
+    @if (_task.IsCompleted)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <GridComponent T="Taxation" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p><em>Loading...</em></p>
+    }
+
+    @code
+    {
+        private CGrid<Taxation> _grid;
+        private Task _task;
+        private GridComponent<Taxation> _gridComponent;
+
+        protected override async Task OnParametersSetAsync()
+        {
+            Action<IGridColumnCollection<Taxation>> columns = c =>
+            {
+                c.Add(o => o.TaxId).Titled("ID").SetPrimaryKey(true);
+                c.Add(o => o.TaxRate).Titled("Tax Rate").Format("{0:f}");
+                c.Add(o => o.TaxAccount).Titled("Tax Account");
+            };
+
+            var query = new QueryDictionary<StringValues>();
+            // query.Add("grid-page", "2");
+
+            var client = new GridClient<Taxation>(q => taxationService.GetTaxationGridRows(columns, q), query, false, "taxationGrid", columns)
+                .Sortable()
+                .Filterable()
+                .Searchable(true, false, false)
+                .WithMultipleFilters()
+                .SetExcelExport(true, false, "TaxationList")
+                .ChangePageSize(true)
+                .Crud(true, taxationService);
+
+            _grid = client.Grid;
+
+            // Set new items to grid
+            _task = client.UpdateGrid();
+            await _task;
+        }
+
+    }

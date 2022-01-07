@@ -1,0 +1,252 @@
+﻿@page "/listOrderGrid"
+@page "/listOrderGrid/{OrderID}/{Mode}"
+@using Microsoft.Extensions.Primitives
+@using TBILLSWebBlazorServerApp.Pages
+@inject IClientAccountService caService
+@inject IOrderDetailService odService
+@inject IOrderService oService
+@inject ISecurityService securityService
+@inject IInstructionService InstServive
+@inject IOrderTypeService orderTypeService
+@inject ITradingSessionService tsService
+<h2>
+    Order Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="Order" @ref="_gridComponent" Grid="@_grid" Mode="_mode" Keys="_keys"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<Order> _grid;
+    private Task _task;
+    private GridComponent<Order> _gridComponent;
+    private object[] _keys;
+    private GridMode _mode;
+
+    [Parameter]
+    public string OrderID { get; set; }
+
+    [Parameter]
+    public string Mode { get; set; }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Func<object[], bool, bool, bool, bool, Task<IGrid>> subGrids = async (keys, create, read, update, delete) =>
+        {
+            var subGridQuery = new QueryDictionary<StringValues>();
+
+            Action<IGridColumnCollection<OrderDetail>> subGridColumns = c => ColumnCollections.OrderDetailColumnsCrud(c, c => securityService.GetAllSecurities(),
+                c => InstServive.GetAllInstructions(), c => orderTypeService.GetAllOrderTypes(), c => securityService.GetAllSecurities());
+
+            var subGridClient = new GridClient<OrderDetail>(q => odService.GetOrderDetailsGridRows(subGridColumns, keys, q),
+                subGridQuery, false, "orderDetailGrid" + keys[0].ToString(), subGridColumns)
+                    .Sortable()
+                    .Filterable()
+                    .SetStriped(true)
+                    .Crud(create, read, update, delete, odService)
+                    .WithMultipleFilters()
+                    .WithGridItemsCount()
+
+                    .AddToOnAfterRender(OnAfterODetailRender)
+                    .SetEditAfterInsert(true);
+
+            await subGridClient.UpdateGrid();
+            return subGridClient.Grid;
+        };
+
+        var query = new QueryDictionary<StringValues>();
+
+        Action<IGridColumnCollection<Order>> columns = c => ColumnCollections.OrderColumnsWithNestedCrud(c, c => caService.GetAllClinetAccounts(),c=>tsService.GetAllSessionNumbers(),
+            subGrids);
+
+        var client = new GridClient<Order>(q => oService.GetOrderGridRows(columns, q),
+            query, false, "orderGrid", columns)
+            .Sortable()
+            .Filterable()
+            .SetStriped(true)
+            .Crud(true, oService)
+            .WithMultipleFilters()
+            .WithGridItemsCount()
+            .SetEditAfterInsert(true)
+            .AddButtonCrudComponent<OrderReportComponent>("OrderReport", "Print Order", true, true, true, false)
+            .AddButtonComponent<CreateTSBtnComponent>("AddNewSession", "Create New Session");
+        _grid = client.Grid;
+
+        if (!string.IsNullOrWhiteSpace(OrderID))
+        {
+            decimal orderID;
+            bool result = decimal.TryParse(OrderID, out orderID);
+            if (result)
+            {
+                if (Mode.ToLower() == "create")
+                {
+                    _keys = new object[] { orderID };
+                    _mode = GridMode.Create;
+                }
+                else if (Mode.ToLower() == "read")
+                {
+                    _keys = new object[] { orderID };
+                    _mode = GridMode.Read;
+                }
+                else if (Mode.ToLower() == "update")
+                {
+                    _keys = new object[] { orderID };
+                    _mode = GridMode.Update;
+                }
+                else if (Mode.ToLower() == "delete")
+                {
+                    _keys = new object[] { orderID };
+                    _mode = GridMode.Delete;
+                }
+            }
+        }
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+    private async Task OnAfterODetailRender(GridComponent<OrderDetail> gridComponent, bool firstRender)
+    {
+        if (firstRender)
+        {
+            gridComponent.BeforeInsert += BeforeInsertoDetail;
+            gridComponent.BeforeUpdate += BeforeUpdateoDetail;
+            gridComponent.BeforeDelete += BeforeDeleteoDetail;
+
+            gridComponent.AfterInsert += AfterInsertoDetail;
+            gridComponent.AfterUpdate += AfterUpdateoDetail;
+            gridComponent.AfterDelete += AfterDeleteoDetail;
+            gridComponent.AfterBack += AfterBack;
+
+            gridComponent.AfterCreateForm += AfterFormoDetail;
+            gridComponent.AfterReadForm += AfterFormoDetail;
+            gridComponent.AfterUpdateForm += AfterFormoDetail;
+            gridComponent.AfterDeleteForm += AfterFormoDetail;
+
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task<bool> BeforeInsertoDetail(GridCreateComponent<OrderDetail> component, OrderDetail item)
+    {
+        var oDetailValidator = new oDetailValidator();
+        var valid = await oDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeInsert(GridCreateComponent<Order> component, Order item)
+    {
+        var ovalidator = new oValidator();
+        var valid = await ovalidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdate(GridUpdateComponent<Order> component, Order item)
+    {
+        var ovalidator = new oValidator();
+        var valid = await ovalidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDelete(GridDeleteComponent<Order> component, Order item)
+    {
+        var ovalidator = new oValidator();
+        var valid = await ovalidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdateoDetail(GridUpdateComponent<OrderDetail> component, OrderDetail item)
+    {
+        var odValidator = new oDetailValidator();
+        var valid = await odValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDeleteoDetail(GridDeleteComponent<OrderDetail> component, OrderDetail item)
+    {
+        var tsDetailValidator = new oDetailValidator();
+        var valid = await tsDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+
+    private async Task AfterInsertoDetail(GridCreateComponent<OrderDetail> component, OrderDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterUpdateoDetail(GridUpdateComponent<OrderDetail> component, OrderDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterDeleteoDetail(GridDeleteComponent<OrderDetail> component, OrderDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterBack(GridComponent<OrderDetail> component, OrderDetail item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterFormoDetail(GridComponent<OrderDetail> gridComponent, OrderDetail item)
+    {
+        _gridComponent.HideCrudButtons();
+        await Task.CompletedTask;
+    }
+
+}

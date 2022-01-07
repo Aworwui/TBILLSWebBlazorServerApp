@@ -1,0 +1,62 @@
+﻿
+@implements IFormCrudComponent<Order>
+@inject IOrderService orderService
+
+<div class="@GridComponent.GridCrudHeaderCssClass">Order</div>
+
+@if (_order == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+<div class="form-horizontal">
+    <div class="form-group row">
+        <label class="col-form-label col-md-2">OrderId</label>
+        <div class="col-md-5">
+            <input class="form-control" readonly="readonly" value="@_order.OrderId" />
+        </div>
+    </div>
+    <div style="display:flex;">
+        <div>
+            <button type="button" class="btn btn-primary btn-md" @onclick="() => BackButtonClicked()">Back</button>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private Order _order;
+
+    [CascadingParameter(Name = "GridComponent")]
+    protected GridComponent<Order> GridComponent { get; set; }
+
+    [Parameter]
+    public Order Item { get; set; }
+
+    [Parameter]
+    public GridMode ReturnMode { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Item.OrderId.ToString()))
+            await BackButtonClicked();
+        else
+        { _order = await orderService.Get(Item.OrderId); }
+
+    }
+
+    protected async Task BackButtonClicked()
+    {
+        if (ReturnMode == GridMode.Create)
+            await GridComponent.CreateHandler(Item);
+        else if (ReturnMode == GridMode.Read)
+            await GridComponent.ReadHandler(Item);
+        else if (ReturnMode == GridMode.Update)
+            await GridComponent.UpdateHandler(Item);
+        else if (ReturnMode == GridMode.Delete)
+            await GridComponent.DeleteHandler(Item);
+        else
+            await GridComponent.Back();
+    }
+}

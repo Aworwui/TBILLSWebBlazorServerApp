@@ -1,0 +1,53 @@
+﻿@page "/gridsample"
+@using Microsoft.Extensions.Primitives
+@inject ICsdClientTypeService csdService
+
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="CsdClientType" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<CsdClientType> _grid;
+    private Task _task;
+    private GridComponent<CsdClientType> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<CsdClientType>> columns = c =>
+        {
+            c.Add(o => o.CsdClientTypeNo)
+            .Titled("ID")
+            .SetPrimaryKey(true);
+            c.Add(o => o.CsdClientTypeCode).Titled("Type Code");
+            c.Add(o => o.CsdClientType1).Titled("Csd Tpye");
+
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        //var client = new GridClient<CsdClientType>(q => csdService.GetCsdClientTypesGridRows(q), query, false, "csdClientTypeGrid", null).AutoGenerateColumns();
+
+        var client = new GridClient<CsdClientType>(q => csdService.GetCsdClientTypesGridRows(columns, q), query, false, "CsdClientTypesGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable()
+            .SetExcelExport(true, false, "CsdClientTypes")
+            .Crud(true, csdService);
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+}

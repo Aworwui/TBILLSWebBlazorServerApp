@@ -1,0 +1,56 @@
+﻿@page "/clientCategorylist"
+@inject IClientCategoryService clientCategoryService
+@using Microsoft.Extensions.Primitives
+<h2>
+    Client Category Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="ClientCategory" @ref="_gridComponent" Grid="@_grid"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+
+@code {
+    private CGrid<ClientCategory> _grid;
+    private Task _task;
+    private GridComponent<ClientCategory> _gridComponent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Action<IGridColumnCollection<ClientCategory>> columns = c =>
+        {
+            c.Add(o => o.ClientCategoryNo).Titled("ID").SetPrimaryKey(true).SetReadOnlyOnCreate(true).SetReadOnlyOnUpdate(true);
+            c.Add(o => o.ClientCategoryCode).Titled("Code");
+            c.Add(o => o.ClientCategory1).Titled("Description");
+            c.Add(o => o.Taxable).Titled("Taxable");
+            c.Add(o => o.TaxAccount).Titled("Tax Account");
+            c.Add(o => o.TaxRate).Titled("Tax Rate");
+        };
+
+        var query = new QueryDictionary<StringValues>();
+        // query.Add("grid-page", "2");
+
+        var client = new GridClient<ClientCategory>(q => clientCategoryService.GetClientCategoryGridRows(columns, q), query, false, "clientCategoryGrid", columns)
+            .Sortable()
+            .Filterable()
+            .Searchable(true, false, false)
+            .WithMultipleFilters()
+            .SetExcelExport(true, false, "clientCategoryListExport")
+            .ChangePageSize(true)
+            .Crud(true, clientCategoryService);
+
+        _grid = client.Grid;
+
+        // Set new items to grid
+        _task = client.UpdateGrid();
+        await _task;
+    }
+}

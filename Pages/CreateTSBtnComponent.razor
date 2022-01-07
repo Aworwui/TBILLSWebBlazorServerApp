@@ -1,0 +1,111 @@
+﻿
+@implements IFormCrudComponent<Order>
+@inject IOrderService orderService
+@inject ITradingSessionService tsService
+@inherits GridCreateComponent<Order>
+
+<div class="@GridComponent.GridCrudHeaderCssClass">New Trading Session</div>
+<EditForm Model="@ts" OnValidSubmit="@CreateItem">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-horizontal">
+        <div class="form-group">
+            <label for="SessionNumber" class="control-label col-md-2">Session Number: </label>
+            <div class="col-md-5">
+                <InputNumber id="SessionNumber" class="form-control" readonly="readonly" @bind-Value="ts.SessionNumber" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="TenderDate" class="control-label col-md-2">Tender Date: </label>
+            <div class="col-md-5">
+                <InputDate id="TenderDate" class="form-control" @bind-Value="ts.TenderDate" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="StartDate" class="control-label col-md-2">StartDate: </label>
+            <div class="col-md-5">
+                <InputDate id="StartDate" class="form-control" @bind-Value="ts.StartDate" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="EndDate" class="control-label col-md-2">End Date: </label>
+            <div class="col-md-5">
+                <InputDate id="EndDate" class="form-control" @bind-Value="ts.EndDate" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="TotalAmountOffered" class="control-label col-md-2">Total Amount Offered: </label>
+            <div class="col-md-5">
+                <InputNumber id="TotalAmountOffered" class="form-control" @bind-Value="ts.TotalAmountOffered" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="TotalSales" class="control-label col-md-2">Total Sales: </label>
+            <div class="col-md-5">
+                <InputNumber id="ShipCity" class="form-control" @bind-Value="ts.TotalSales" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="Closed" class="control-label col-md-2">Closed: </label>
+            <div class="col-md-5">
+                <InputText id="Closed" class="form-control" @bind-Value="ts.Closed" />
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-5">
+                <button type="submit" class="btn btn-primary btn-md" @onclick="SaveButtonClicked">Save</button>
+                <button type="button" class="btn btn-primary btn-md" @onclick="BackButtonClicked">Back</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+
+@code {
+    private CGrid<TradingSession> _grid;
+    private Task _task;
+    private GridMode _mode;
+
+    [CascadingParameter]
+    public IModalService Modal { get; set; }
+
+    [Parameter]
+    public GridMode ReturnMode { get; set; }
+
+    TradingSession ts = new TradingSession();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        ts.TenderDate = DateTime.Now;
+        ts.StartDate = DateTime.Now;
+        ts.EndDate = DateTime.Now;
+
+    }
+
+    protected async Task BackButtonClicked()
+    {
+        await GridComponent.Back();
+    }
+
+    protected async Task SaveButtonClicked()
+    {
+        if (ts != null)
+        {
+            await tsService.Insert(ts);
+            //await tsService.
+        }
+        await GridComponent.CreateHandler(Item);
+    }
+
+    private void HandleValidSubmit()
+    {
+        //Logger.LogInformation("HandleValidSubmit called");
+    }
+
+}

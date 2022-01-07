@@ -1,0 +1,93 @@
+﻿@page "/listAllotmentsGrid"
+@page "/listAllotmentsGrid/{AllotmentId}/{Mode}"
+@using Microsoft.Extensions.Primitives
+@using TBILLSWebBlazorServerApp.Pages
+@inject IClientAccountService caService
+@inject IAllotmentService allotmentService
+@inject ISecurityService securityService
+@inject IInstructionService InstServive
+@inject IOrderTypeService orderTypeService
+@inject IInstructionService instructionService
+@inject ITradingSessionService tsService
+
+<h2>
+    Allotments Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="Allotment" @ref="_gridComponent" Grid="@_grid" Mode="_mode" Keys="_keys"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+@code
+    {
+        private CGrid<Allotment> _grid;
+        private Task _task;
+        private GridComponent<Allotment> _gridComponent;
+        private object[] _keys;
+        private GridMode _mode;
+
+        [Parameter]
+        public string AllotmentId { get; set; }
+
+        [Parameter]
+        public string Mode { get; set; }
+
+        protected override async Task OnParametersSetAsync()
+        {
+            Action<IGridColumnCollection<Allotment>> columns = c => ColumnCollections.GetAllotmentcolumns(c, c=> tsService.GetAllSessionNumbers(),c => securityService.GetAllSecurities(),
+                     c=>InstServive.GetAllInstructions(), c=>orderTypeService.GetAllOrderTypes(), c=>securityService.GetAllSecurities());
+
+
+            var query = new QueryDictionary<StringValues>();
+
+        var client = new GridClient<Allotment>(q => allotmentService.GetAllotmentGridRows(columns,q), query, false, "allotmentGrid", columns)
+                .Sortable()
+                .Filterable()
+                .SetStriped(true)
+                .Crud(true, true, true, true, allotmentService)
+                .ChangePageSize(true)
+                .SetEditAfterInsert(true)
+                .SetExcelExport(true, false, "AllotmentsList");
+
+
+        _grid = client.Grid;
+
+        if (!string.IsNullOrWhiteSpace(AllotmentId))
+        {
+            int allotmentId;
+            bool result = int.TryParse(AllotmentId, out allotmentId);
+            if (result)
+            {
+                if (Mode.ToLower() == "create")
+                {
+                    _keys = new object[] { allotmentId };
+                    _mode = GridMode.Create;
+                }
+                else if (Mode.ToLower() == "read")
+                {
+                    _keys = new object[] { allotmentId };
+                    _mode = GridMode.Read;
+                }
+                else if (Mode.ToLower() == "update")
+                {
+                    _keys = new object[] { allotmentId };
+                    _mode = GridMode.Update;
+                }
+                else if (Mode.ToLower() == "delete")
+                {
+                    _keys = new object[] { allotmentId };
+                    _mode = GridMode.Delete;
+                }
+            }
+        }
+        _task = client.UpdateGrid();
+        await _task;
+    }
+}

@@ -1,0 +1,246 @@
+﻿@page "/clientlistGrid"
+
+@page "/clientlistGrid/{ClientID}/{Mode}"
+@using Microsoft.Extensions.Primitives
+@inject IClientAccountService caService
+@inject IBranchService branchService
+@inject IClientTypeService ctService
+@inject IClientService clientService
+@inject IClientCategoryService clientCatService
+<h2>
+    Client Details
+</h2>
+@if (_task.IsCompleted)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <GridComponent T="Client" @ref="_gridComponent" Grid="@_grid" Mode="_mode" Keys="_keys"></GridComponent>
+        </div>
+    </div>
+}
+else
+{
+    <p><em>Loading...</em></p>
+}
+
+@code
+    {
+    private CGrid<Client> _grid;
+    private Task _task;
+    private GridComponent<Client> _gridComponent;
+    private object[] _keys;
+    private GridMode _mode;
+
+    [Parameter]
+    public string ClientID { get; set; }
+
+    [Parameter]
+    public string Mode { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Func<object[], bool, bool, bool, bool, Task<IGrid>> subGrids = async (keys, create, read, update, delete) =>
+        {
+            var subGridQuery = new QueryDictionary<StringValues>();
+
+            Action<IGridColumnCollection<ClientAccount>> subGridColumns = c => ColumnCollections.ClientAccountColumnsCrud(c, c => branchService.GetAllBranches());
+
+            var subGridClient = new GridClient<ClientAccount>(q => caService.GetClientAccountGridRows(subGridColumns, keys, q),
+                subGridQuery, false, "caGrid" + keys[0].ToString(), subGridColumns)
+                    .Sortable()
+                    .Filterable()
+                    .SetStriped(true)
+                    .Crud(create, read, update, delete, caService)
+                    .WithMultipleFilters()
+                    .WithGridItemsCount()
+
+                    .AddToOnAfterRender(OnAfterClientAccountRender)
+                    .SetEditAfterInsert(true);
+
+            await subGridClient.UpdateGrid();
+            return subGridClient.Grid;
+        };
+
+        var query = new QueryDictionary<StringValues>();
+
+        Action<IGridColumnCollection<Client>> columns = c => ColumnCollections.ClientColumnsCrud(c, c => caService.GetAllClinetAccounts(), c => ctService.GetAllClientTypes(),
+            c => clientCatService.GetAllClientCategory(), subGrids);
+
+        var client = new GridClient<Client>(q => clientService.GetClientGridRows(columns, q),
+            query, false, "clientGrid", columns)
+            .Sortable()
+            .Filterable()
+            .SetStriped(true)
+            .Crud(true, clientService)
+            .WithMultipleFilters()
+            .WithGridItemsCount()
+            .SetEditAfterInsert(true);
+
+        _grid = client.Grid;
+
+        if (!string.IsNullOrWhiteSpace(ClientID))
+        {
+            decimal clientID;
+            bool result = decimal.TryParse(ClientID, out clientID);
+            if (result)
+            {
+                if (Mode.ToLower() == "create")
+                {
+                    _keys = new object[] { clientID };
+                    _mode = GridMode.Create;
+                }
+                else if (Mode.ToLower() == "read")
+                {
+                    _keys = new object[] { clientID };
+                    _mode = GridMode.Read;
+                }
+                else if (Mode.ToLower() == "update")
+                {
+                    _keys = new object[] { clientID };
+                    _mode = GridMode.Update;
+                }
+                else if (Mode.ToLower() == "delete")
+                {
+                    _keys = new object[] { clientID };
+                    _mode = GridMode.Delete;
+                }
+            }
+        }
+        _task = client.UpdateGrid();
+        await _task;
+    }
+
+    private async Task OnAfterClientAccountRender(GridComponent<ClientAccount> gridComponent, bool firstRender)
+    {
+        if (firstRender)
+        {
+            gridComponent.BeforeInsert += BeforeInsertClientAccount;
+            gridComponent.BeforeUpdate += BeforeUpdateClientAccount;
+            gridComponent.BeforeDelete += BeforeDeleteClientAccount;
+
+            gridComponent.AfterInsert += AfterInsertClientAccount;
+            gridComponent.AfterUpdate += AfterUpdateClientAccount;
+            gridComponent.AfterDelete += AfterDeleteClientAccount;
+            gridComponent.AfterBack += AfterBack;
+
+            gridComponent.AfterCreateForm += AfterFormClientAccount;
+            gridComponent.AfterReadForm += AfterFormClientAccount;
+            gridComponent.AfterUpdateForm += AfterFormClientAccount;
+            gridComponent.AfterDeleteForm += AfterFormClientAccount;
+
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task<bool> BeforeInsertClientAccount(GridCreateComponent<ClientAccount> component, ClientAccount item)
+    {
+        var oValidator = new ClientAccountValidator();
+        var valid = await oValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeInsert(GridCreateComponent<Client> component, Client item)
+    {
+        var oValidator = new ClientValidator();
+        var valid = await oValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Insert operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdate(GridUpdateComponent<Client> component, Client item)
+    {
+        var ovalidator = new ClientValidator();
+        var valid = await ovalidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDelete(GridDeleteComponent<Client> component, Client item)
+    {
+        var ovalidator = new ClientValidator();
+        var valid = await ovalidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeUpdateClientAccount(GridUpdateComponent<ClientAccount> component, ClientAccount item)
+    {
+        var odValidator = new ClientAccountValidator();
+        var valid = await odValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = "Update operation returned one or more errors";
+            foreach (var error in valid.Errors)
+            {
+                component.ColumnErrors.AddParameter(error.PropertyName, error.ErrorMessage);
+            }
+        }
+        return valid.IsValid;
+    }
+
+    private async Task<bool> BeforeDeleteClientAccount(GridDeleteComponent<ClientAccount> component, ClientAccount item)
+    {
+        var tsDetailValidator = new ClientAccountValidator();
+        var valid = await tsDetailValidator.ValidateAsync(item);
+        if (!valid.IsValid)
+        {
+            component.Error = valid.ToString();
+        }
+        return valid.IsValid;
+    }
+    private async Task AfterInsertClientAccount(GridCreateComponent<ClientAccount> component, ClientAccount item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterUpdateClientAccount(GridUpdateComponent<ClientAccount> component, ClientAccount item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterDeleteClientAccount(GridDeleteComponent<ClientAccount> component, ClientAccount item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterBack(GridComponent<ClientAccount> component, ClientAccount item)
+    {
+        _gridComponent.ShowCrudButtons();
+        await Task.CompletedTask;
+    }
+
+    private async Task AfterFormClientAccount(GridComponent<ClientAccount> gridComponent, ClientAccount item)
+    {
+        _gridComponent.HideCrudButtons();
+        await Task.CompletedTask;
+    }
+
+}
